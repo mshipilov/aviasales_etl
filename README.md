@@ -17,5 +17,12 @@ Step 4 - scheduler and data visualization
 TBD
 
 ## How to run project:
+cd /app
+docker-compose up
+docker build . -t scraper:test
+docker run --rm scraper:test
+
+
+### Run script without Docker:
 `pip install uv`
 `uv run main.py`

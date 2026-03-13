@@ -3,6 +3,11 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 
 
+#os.makedirs('/tmp/chromedriver', exist_ok=True)
+
+#uc.Patcher.data_path = "/tmp/undetected_chromedriver"
+
+
 class Scraper:
     
     options = uc.ChromeOptions()
@@ -12,6 +17,7 @@ class Scraper:
     
     def __init__(self):
         self.driver = uc.Chrome(options=self.options)
+        #driver_executable_path='/usr/bin/chromedriver')
 
     def scrape(self, route: str) -> int:
         try:
