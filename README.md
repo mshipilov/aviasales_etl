@@ -2,6 +2,7 @@
 Avia tickets prices dashboard
 
 Development plan:
+
 Step 1 - core logic (Done - 5 hours)
 1. Get price the website (selenium)
 
@@ -18,8 +19,11 @@ TBD
 
 ## How to run project:
 cd /app
+
 docker-compose up
+
 docker build . -t scraper:test
+
 docker run --rm scraper:test
 
 

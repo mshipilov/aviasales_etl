@@ -1,4 +1,3 @@
-# Use Python 3.12 slim (based on Debian Bookworm)
 FROM python:3.12-slim
 
 # Prevent Python from writing .pyc files and buffering stdout/stderr
@@ -23,12 +22,11 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --d
 
 
 # Install undetected-chromedriver
-RUN pip install --no-cache-dir undetected-chromedriver selenium setuptools
+RUN pip install uv
 
-# Set working directory
 WORKDIR /app
 
-# Copy your script into the container
+COPY .python-version pyproject.toml uv.lock .
 COPY main.py scraper.py .
 
-ENTRYPOINT [ "python", "main.py" ]
+ENTRYPOINT [ "uv", "run", "main.py" ]
