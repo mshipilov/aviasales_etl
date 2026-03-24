@@ -31,10 +31,12 @@ def add_route(origin: str, destination: str, abbr: str):
     stmt = select(Route).where(Route.abbr == abbr)
     route = session.execute(stmt)
     # if abbr exists in DB - activate it
-    if route:
+    if route.scalars().first():
+        print('added route exists in DB')
         route.is_active = True
     # if abbr does not exist in DB - create it
     else:
+        print('added route does not exist in DB')
         session.add(Route(origin=origin, destination=destination, abbr=abbr))
 
     session.commit()

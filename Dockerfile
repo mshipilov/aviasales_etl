@@ -21,12 +21,12 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --d
     && rm -rf /var/lib/apt/lists/*
 
 
-# Install undetected-chromedriver
 RUN pip install uv
 
-WORKDIR /app
-
 COPY .python-version pyproject.toml uv.lock .
-COPY main.py scraper.py .
+COPY app/*.py app/.env /app/
+# install dependencies inside image - to avoid this actions when "docker run"
+RUN uv sync 
 
-ENTRYPOINT [ "uv", "run", "main.py" ]
+EXPOSE 8000
+ENTRYPOINT [ "uv", "run", "uvicorn", "app.api:app" ]
