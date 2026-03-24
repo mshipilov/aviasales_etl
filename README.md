@@ -4,7 +4,7 @@ Avia tickets prices dashboard
 Development plan:
 
 Step 1 - core logic (Done - 5 hours)
-1. Get price the website (selenium)
+1. Get price from aviasales.com (selenium)
 
 Step 2 - DB and ORM
 1. SQLAlchemy for ORM?
