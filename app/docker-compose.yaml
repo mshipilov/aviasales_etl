@@ -1,10 +1,8 @@
 services:
   pgdatabase:
     image: postgres:18
-    environment:
-      POSTGRES_USER: "root"
-      POSTGRES_PASSWORD: "root"
-      POSTGRES_DB: "aviasales"
+    env_file:
+      - .env
     volumes:
       - "aviasales_postgres_data:/var/lib/postgresql"
     ports:

@@ -5,8 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi[standard]>=0.135.1",
+    "psycopg2-binary>=2.9.11",
+    "python-dotenv>=1.2.2",
     "selenium>=4.41.0",
     "setuptools>=82.0.1",
+    "sqlalchemy>=2.0.48",
     "undetected-selenium>=1.1",
 ]
 
