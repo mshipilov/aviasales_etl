@@ -32,6 +32,7 @@ class RouteHistory(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     extracted_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
     price: Mapped[int] = mapped_column(CheckConstraint("price > 0"))
+    departure_date: Mapped[datetime.datetime]
     route_id = mapped_column(ForeignKey("route.id"))
     route: Mapped["Route"] = relationship(back_populates="history")
     def __repr__(self) -> str:

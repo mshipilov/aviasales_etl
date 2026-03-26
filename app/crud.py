@@ -44,12 +44,6 @@ def add_route(origin: str, destination: str, abbr: str):
 
 def deactivate_route(abbr):
     session.execute(update(Route).where(Route.abbr==abbr).values(is_active=False))
-    # if isinstance(abbrs, str):
-    #     session.execute(update(Route).where(Route.abbr==abbrs).values(is_active=False))
-    # elif isinstance(abbrs, list):
-    #     session.execute(select(Route).where(Route.abbr.in_(abbrs)).values(is_active=False))
-    # else:
-    #     raise TypeError("abbrs must be an str or a list of strings")
 
     session.commit()
     
@@ -58,10 +52,12 @@ def extract_data():
     scraper = Scraper()
     for route in session.execute(select(Route).where(Route.is_active==True)).first():
         print(route)
-        price = scraper.scrape(route.abbr)
+        data = scraper.scrape(route.abbr)
+        price, departure_date = data['price'], data['departure_date']
         route_history = RouteHistory(
             route_id=route.id,
-            price=price
+            price=price,
+            departure_date=departure_date
         )
         session.add(route_history)
     session.commit()
