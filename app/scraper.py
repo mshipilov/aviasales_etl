@@ -2,7 +2,11 @@ import re
 from datetime import datetime, timedelta
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
+from webdriver_manager.core.os_manager import OperationSystemManager, ChromeType
 
+# detect installed Chrome version
+browser_version = OperationSystemManager().get_browser_version_from_os(ChromeType.GOOGLE)
+major_version = int(browser_version.split('.')[0])
 
 class Scraper:
     

@@ -13,6 +13,7 @@ dependencies = [
     "setuptools>=82.0.1",
     "sqlalchemy>=2.0.48",
     "undetected-selenium>=1.1",
+    "webdriver-manager>=4.0.2",
 ]
 
 [dependency-groups]

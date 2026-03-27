@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, update
 from .models import Base, Route, RouteHistory
 from .scraper import Scraper
+from .log_config import logger
 
 load_dotenv()
 DB_USER=os.getenv('DB_USER')
@@ -22,12 +23,14 @@ Base.metadata.create_all(engine)
 
 
 def get_active_routes():
+    logger.info("Fetching all active routes")
     stmt = select(Route).where(Route.is_active == True)
     active_routes = session.execute(stmt).scalars().all()
     return active_routes
 
 
 def add_route(origin: str, destination: str, abbr: str):
+    logger.info(f"Adding new route: {origin} -> {destination} ({abbr})")
     stmt = select(Route).where(Route.abbr == abbr)
     route = session.execute(stmt)
     # if abbr exists in DB - activate it
@@ -43,16 +46,27 @@ def add_route(origin: str, destination: str, abbr: str):
 
 
 def deactivate_route(abbr):
+    logger.info(f"Deactivating route with abbr: {abbr}")
     session.execute(update(Route).where(Route.abbr==abbr).values(is_active=False))
 
     session.commit()
     
 
+def get_route_history(abbr):
+    logger.info(f"Fetching history for route: {abbr}")
+    stmt = session.execute(select(Route).join(RouteHistory).where(Route.id==RouteHistory.route_id).where(Route.abbr==abbr))
+    route_history = session.execute(stmt).scalars().all()
+    return route_history
+
+
 def extract_data():
     scraper = Scraper()
-    for route in session.execute(select(Route).where(Route.is_active==True)).first():
-        print(route)
+    for route in session.execute(select(Route).where(Route.is_active==True)).scalars().all():
+        logger.info(f"Processing route: {route.abbr}")
         data = scraper.scrape(route.abbr)
+        if data is None:
+            logger.warning(f"Data not found for route with abbr: {route.abbr}")
+            continue
         price, departure_date = data['price'], data['departure_date']
         route_history = RouteHistory(
             route_id=route.id,
