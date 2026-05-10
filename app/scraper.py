@@ -11,18 +11,56 @@ major_version = int(browser_version.split('.')[0])
 class Scraper:
     
     options = uc.ChromeOptions()
-    options.add_argument('--headless=new')
+    #options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    
+
     def __init__(self):
         self.driver = uc.Chrome(options=self.options, version_main=146)
         #driver_executable_path='/usr/bin/chromedriver')
 
-    def scrape(self, route: str) -> int:
+    def get_route_abbr(self, arrival: str, destination: str) -> str:
+        """Scrapes route abbreviation
+
+        Args:
+            arrival (str) - название города или страны на русском языке (место отправления)
+            destination (str) - название города или страны на русском языке (место прибытия)
+
+        Returns:
+            abbr: the abbreviation of route
+
+        """
+        self.driver.get(f'https://www.aviasales.ru')
+        print('inserting arrival...')
+        arrival_input = self.driver.find_element(By.XPATH, '//*[@id="avia_form_origin-input"]')
+        arrival_input.clear()
+        arrival_input.send_keys(arrival)
+        print('inserting destination...')
+        destination_input = self.driver.find_element(By.XPATH, '//*[@id="avia_form_destination-input"]')
+        destination_input.send_keys(destination)
+        print(scraper.driver.current_url)
+        abbr = scraper.driver.current_url.split('params=')[1]
+
+        return abbr
+
+    def scrape_abbr(self, abbr: str, open_url: bool = True) -> dict:
+        """Scrapes data for route abbreviation
+
+        Args:
+            abbr (str): the abbreviation of route as it used in url For example https://www.aviasales.ru/?params=OVBUIO1 abbr is OVBUIO1.
+            open_url (bool): set it to False if page is already opened
+
+        Returns:
+            dict: route data
+
+        Raises:
+
+
+        """
         try:
-            print(f'start scraping {route} ...')
-            self.driver.get(f'https://www.aviasales.ru/?params={route}')
+            print(f'start scraping {abbr} ...')
+            if open_url:
+                self.driver.get(f'https://www.aviasales.ru/?params={abbr}')
             
             price_element = self.driver.find_element(By.XPATH, '//*[@data-test-id="price"]')
             price_str = ''.join(re.findall(r'\d+', price_element.text))
@@ -35,12 +73,12 @@ class Scraper:
         except Exception as e:
             print(f"Exception Type: {type(e).__name__}")
             print(f"Exception Text: {str(e)}")
-            return None
+            return {'price': None, 'departure_date': None}
             
     def scrape_list(self, route_list: list) -> list:
         price_list = []
         for route in route_list:
-            price = self.scrape(route)
+            price = self.scrape_abbr(route)
             price_list.append(price)
         print('scrape_list finished')
             
@@ -77,3 +115,10 @@ def parse_russian_date(date_str):
         result_date = result_date + timedelta(days=365)  # ignore 366 days in year for simplicity
     
     return result_date
+
+
+if __name__ == '__main__':
+    scraper = Scraper()
+    abbr = scraper.get_route_abbr('Новосибирск', 'Москва')
+    
+    print(abbr)

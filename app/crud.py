@@ -63,7 +63,7 @@ def extract_data():
     scraper = Scraper()
     for route in session.execute(select(Route).where(Route.is_active==True)).scalars().all():
         logger.info(f"Processing route: {route.abbr}")
-        data = scraper.scrape(route.abbr)
+        data = scraper.scrape_abbr(route.abbr)
         if data is None:
             logger.warning(f"Data not found for route with abbr: {route.abbr}")
             continue
