@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
 from .models import Base, Route, RouteHistory
-from .scraper import Scraper
+from ..worker.scraper import Scraper
 from .log_config import logger
 
 load_dotenv()
