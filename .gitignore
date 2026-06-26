@@ -1,7 +1,6 @@
-*.ipynb
-*.ipynb_checkpoints
+**/.ipynb
+**/.ipynb_checkpoints
 **/__pycache__/
 **/logs
 **/venv
 **/.idea
-/app/.env

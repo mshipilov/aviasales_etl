@@ -7,5 +7,5 @@ python-dotenv>=1.2.2
 #selenium>=4.41.0
 setuptools>=82.0.1
 sqlalchemy>=2.0.48
-#3undetected-selenium>=1.1
+#undetected-selenium>=1.1
 #webdriver-manager>=4.0.2

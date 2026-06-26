@@ -17,8 +17,8 @@ docker build . -t scraper:orm
 
 
 ### Run script without Docker:
-`pip install uv`
-`uv run uvicorn app.api:app`
+`pip install requirements.txt`
+`uvicorn app.api:app`
 
 ## Development plan:
 

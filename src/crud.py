@@ -1,11 +1,14 @@
 import os
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
+
 from .models import Base, Route, RouteHistory
 from ..worker.scraper import Scraper
 from .log_config import logger
+from .schemas import ScrapeInput
 
 load_dotenv()
 DB_USER=os.getenv('DB_USER')
@@ -57,6 +60,13 @@ def get_route_history(abbr):
     stmt = session.execute(select(Route).join(RouteHistory).where(Route.id==RouteHistory.route_id).where(Route.abbr==abbr))
     route_history = session.execute(stmt).scalars().all()
     return route_history
+
+
+async def get_route_by_origin_destination(scrape_input: ScrapeInput) -> str | None:
+    logger.info(f"Check if {scrape_input} exists in DB")
+    stmt = session.execute(select(Route).join(RouteHistory).where(Route.id==RouteHistory.route_id).where(Route.abbr==abbr))
+
+    return 
 
 
 def extract_data():
