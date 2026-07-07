@@ -18,22 +18,5 @@ docker build . -t scraper:orm
 
 ### Run script without Docker:
 `pip install requirements.txt`
-`uvicorn app.api:app`
-
-## Development plan:
-
-Step 1 - core logic (Done - 8 hours)
-1. Get price from aviasales.com (selenium)
-
-Step 2 - DB and ORM (Done - 24 hours)
-1. SQLAlchemy for ORM + Alembic
-2. Postgres DB
-3. Docker
-
-Step 3 - API (Done - 4 hours)
-1. Endpoints (FastAPI): get active routes,  add route, delete route, start scraping
-
-
-Step 4 - scheduler, data visualization, async scraping 
-TBD
+`uvicorn src.main:app`
 

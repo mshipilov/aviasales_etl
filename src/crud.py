@@ -1,29 +1,45 @@
-import os
+import logging
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 
 from .models import Base, Route, RouteHistory
-from ..worker.scraper import Scraper
-from .log_config import logger
-from .schemas import ScrapeInput
+from .schemas import ScrapeInput, ScrapeResult
 
-load_dotenv()
-DB_USER=os.getenv('DB_USER')
-DB_PASS=os.getenv('DB_PASS')
-DB_HOST=os.getenv('DB_HOST')
-DB_PORT=os.getenv('DB_PORT')
-DB_NAME=os.getenv('DB_NAME')
+logger = logging.getLogger(__name__)
 
-database_url = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-engine = create_engine(database_url, echo=True)
-session = Session(engine)
+async def read_route_by_origin_destination(db: AsyncSession, scrape_input: ScrapeInput) -> Route | None:
+    logger.info(f"Checking DB for route: {scrape_input.origin} -> {scrape_input.destination}")
+    
+    stmt = select(Route).where(
+        Route.origin == scrape_input.origin,
+        Route.destination == scrape_input.destination
+    )
+    
+    result = await db.execute(stmt)
 
-# create tables if not exist
-Base.metadata.create_all(engine)
+    return result.scalar_one_or_none()
 
+async def create_route(scrape_result: ScrapeResult, db: AsyncSession) -> Route | None:
+    logger.info(f"Saving new route in DB: {scrape_result.origin} -> {scrape_result.destination} ({scrape_result.abbr})")
+    route = Route(origin=scrape_result.origin,
+        destination=scrape_result.destination,
+        abbr=scrape_result.abbr
+    )
+
+    try:
+        db.add(route)
+        await db.commit()
+        await db.refresh(route)
+        return route
+    except IntegrityError:
+        await db.rollback()
+        logger.warning(f"Route already exists for {ScrapeResult}")
+        return None 
+    
+async def create_route_history(scrape_result: ScrapeResult, db: AsyncSession) -> RouteHistory:
+    logger.info(f"Saving new route history in DB: {scrape_result.origin} -> {scrape_result.destination}, price = {scrape_result.price}")
 
 def get_active_routes():
     logger.info("Fetching all active routes")
@@ -57,16 +73,12 @@ def deactivate_route(abbr):
 
 def get_route_history(abbr):
     logger.info(f"Fetching history for route: {abbr}")
-    stmt = session.execute(select(Route).join(RouteHistory).where(Route.id==RouteHistory.route_id).where(Route.abbr==abbr))
+    stmt = session.execute(select(Route.abbr).join(RouteHistory).where(Route.id==RouteHistory.route_id).where(Route.abbr==abbr))
     route_history = session.execute(stmt).scalars().all()
     return route_history
 
 
-async def get_route_by_origin_destination(scrape_input: ScrapeInput) -> str | None:
-    logger.info(f"Check if {scrape_input} exists in DB")
-    stmt = session.execute(select(Route).join(RouteHistory).where(Route.id==RouteHistory.route_id).where(Route.abbr==abbr))
 
-    return 
 
 
 def extract_data():
