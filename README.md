@@ -1,24 +1,10 @@
 # aviasales_etl
 air ticket price monitoring
 
-Development plan:
+## Architecture
+Aviasales API -> Scraper -> Transformation -> Database -> FastAPI
 
-Step 1 - core logic (Done - 5 hours)
-1. Get price from aviasales.com (selenium)
-
-Step 2 - DB and ORM (Done - 20 hours)
-1. SQLAlchemy for ORM
-2. Postgres DB
-3. Docker
-
-Step 3 - API (Done - 4 hours)
-1. Endpoints (FastAPI): get active routes,  add route, delete route, start scraping
-
-
-Step 4 - scheduler, data visualization, async scraping 
-TBD
-
-## How to run project:
+## Quick Start
 cd /app
 
 docker-compose up
@@ -31,5 +17,6 @@ docker build . -t scraper:orm
 
 
 ### Run script without Docker:
-`pip install uv`
-`uv run uvicorn app.api:app`
+`pip install requirements.txt`
+`uvicorn src.main:app`
+
