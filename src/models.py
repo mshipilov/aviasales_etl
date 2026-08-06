@@ -23,6 +23,7 @@ class Route(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
     origin: Mapped[str] = mapped_column(String(30))
     destination: Mapped[str] = mapped_column(String(30))
     abbr: Mapped[str] = mapped_column(String(30), unique=True)

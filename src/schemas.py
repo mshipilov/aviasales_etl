@@ -1,7 +1,7 @@
 from typing import List
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CustomBaseModel(BaseModel):    
@@ -20,9 +20,28 @@ class ScrapeContext(ScrapeInput):
     """here user's typos in origin and destination are fixed by scraper"""
     abbr: str = Field(description="the abbreviation of route as it used in url For example https://www.aviasales.ru/?params=OVBUIO1 abbr is OVBUIO1")
 
+
 class ScrapeResult(ScrapeContext):
     price: int 
     departure_date: date
+
+class RouteResult(CustomBaseModel):
+    id: int
+    origin: str
+    destination: str
+    abbr: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class RouteHistoryInput(CustomBaseModel):
+    route_ids: list[int]     
+
+class RouteHistoryResult(CustomBaseModel):
+    id: int
+    extracted_at: datetime
+    price: int
+    departure_date: date
+
 
 
 '''

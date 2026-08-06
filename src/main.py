@@ -2,17 +2,20 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, Response, HTTPException, status, Depends
+from fastapi import FastAPI, Response, HTTPException, status, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from dotenv import load_dotenv
 
-from .crud import get_active_routes, add_route, deactivate_route, get_route_history, extract_data
-from .service import scrape_route
-from .schemas import ScrapeInput, ScrapeResult
-from .database import SessionDep, create_db_tables
+load_dotenv() 
 
-load_dotenv()  
+from .crud import add_route, deactivate_route, get_route_history, extract_data
+from .service import scrape_route, get_active_routes, get_bulk_route_history
+from .schemas import ScrapeInput, ScrapeResult, RouteResult, RouteHistoryResult, RouteHistoryInput
+from .database import SessionDep, create_db_tables
+from . import log_config
+
+ 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,8 +58,11 @@ async def scrape_one_route(
     return scrape_result
 
 @app.get('/routes/')
-def get_routes():
-    active_routes = get_active_routes()
+async def get_routes(
+    db: SessionDep,
+    route_number: int = Query(default=8),
+    ) -> list[RouteResult]:
+    active_routes = await get_active_routes(route_number=route_number, db=db)
     if not active_routes:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
@@ -64,13 +70,23 @@ def get_routes():
         )
     return active_routes
 
+@app.post('/routes/history/')
+async def get_route_histories(
+    db: SessionDep,
+    route_history_input: RouteHistoryInput
+    ) -> dict[int, list[RouteHistoryResult]]:
+    route_histories = await get_bulk_route_history(db=db, route_ids=route_history_input.route_ids)
+
+    return route_histories
+
+
 @app.patch('/routes/deactivate/')
-def deactivate(abbr: str):
+async def deactivate(abbr: str):
     deactivate_route(abbr)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.get('/routes/{abbr}/history')
-def get_route_history(abbr: str):
+async def get_route_history(abbr: str):
     history = get_route_history(abbr)
     if not history:
         raise HTTPException(

@@ -1,11 +1,10 @@
 alembic>=1.18.4
+celery==5.6.3
 fastapi[standard]>=0.135.1
 ipykernel==7.2.0
 playwright==1.60.0
 asyncpg>=0.31.0
 python-dotenv>=1.2.2
-#selenium>=4.41.0
+redis==8.1.0
 setuptools>=82.0.1
 sqlalchemy[asyncio]>=2.1.0b3
-#undetected-selenium>=1.1
-#webdriver-manager>=4.0.2

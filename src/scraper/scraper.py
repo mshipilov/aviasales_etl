@@ -44,7 +44,8 @@ class AsyncScraper:
         return scrape_context
 
     async def scrape_abbr(self, scrape_context: ScrapeContext) -> ScrapeResult:
-        url = f'https://aviasales.ru/?params={scrape_context.abbr}'
+        url = f'https://www.aviasales.ru/?params={scrape_context.abbr}'
+        print(url)
 
         # open url only if not open yet
         if self.page.url != url:
@@ -64,16 +65,16 @@ class AsyncScraper:
         
         return scrape_result
     
-    async def scrpape_by_input(self, scrape_input: ScrapeInput) -> ScrapeResult:
+    async def scrape_by_input(self, scrape_input: ScrapeInput) -> ScrapeResult:
         await self.add_headers()
-        scrape_context = await self.scrpape_by_input(scrape_input)
-        scrape_result = await self.scrape_by_context(scrape_context)
+        scrape_context = await self.get_route_abbr(scrape_input)
+        scrape_result = await self.scrape_abbr(scrape_context)
 
         return scrape_result
         
     async def scrape_by_context(self, scrape_context: ScrapeContext) -> ScrapeResult:
         await self.add_headers()
-        scrape_result = await self.scrape_by_context(scrape_context)
+        scrape_result = await self.scrape_abbr(scrape_context)
 
         return scrape_result
 
