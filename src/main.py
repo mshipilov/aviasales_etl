@@ -1,7 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
+import json
 
+import redis
 from fastapi import FastAPI, Response, HTTPException, status, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
@@ -11,9 +13,10 @@ load_dotenv()
 
 from .crud import add_route, deactivate_route, get_route_history, extract_data
 from .service import scrape_route, get_active_routes, get_bulk_route_history
-from .schemas import ScrapeInput, ScrapeResult, RouteResult, RouteHistoryResult, RouteHistoryInput
+from .schemas import ScrapeInput, ScrapeResult, RouteResult, RouteHistoryResult, RouteHistoryInput, ScrapeResultDict
 from .database import SessionDep, create_db_tables
 from . import log_config
+from .tasks import batch_scrape_and_cache
 
  
 
@@ -37,6 +40,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+
 async def get_request_page() -> Page:
     context = app.state.context
     page = await context.new_page()
@@ -45,16 +51,28 @@ async def get_request_page() -> Page:
     finally:
         await page.close()
 
-# 2. Create a reusable Type Alias (keeps your endpoints clean)
 PageDep = Annotated[Page, Depends(get_request_page)]
 
 
 @app.post('/routes/scrape_one/')
 async def scrape_one_route(
-    scrape_input: ScrapeInput, 
-    db: SessionDep, 
-    page: PageDep) -> ScrapeResult:
-    scrape_result = await scrape_route(scrape_input=scrape_input, db=db, page=page)
+    scrape_input: ScrapeInput
+    ) -> ScrapeResultDict:
+    # cache path format
+    cache_key = f"cache:route:{scrape_input.origin}:{scrape_input.destination}"
+    
+    # 1. check redis cache
+    cached_data = redis_client.get(cache_key)
+    if cached_data:
+        return {
+            "status": "success",
+            "source": "redis_cache",
+            "message": "Data retrieved from cache. Already scraped in last 24 hours.",
+            "data": json.loads(cached_data)
+            }
+        
+    task_input = scrape_input.model_dump()
+    task = batch_scrape_and_cache.delay([task_input])
     return scrape_result
 
 @app.get('/routes/')
