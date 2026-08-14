@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from datetime import date, datetime
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
@@ -27,15 +27,20 @@ class ScrapeContext(ScrapeInput):
     abbr: str = Field(description="the abbreviation of route as it used in url For example https://www.aviasales.ru/?params=OVBUIO1 abbr is OVBUIO1")
 
 
-class ScrapeResult(ScrapeContext):
+class ScrapeSuccess(ScrapeContext):
     price: int 
     departure_date: date
+    status: str = "success"
 
-class ScrapeResultDict(CustomBaseModel):
+class ScrapeFailure(BaseModel):
+    status: str = "failed"
+    error: str
+
+ScrapeResult = Union[ScrapeSuccess, ScrapeFailure]
+
+class ScrapePreResult(CustomBaseModel):
     status: str
-    source: str
-    message: str
-    data: ScrapeResult
+    task_id: str
 
 class RouteResult(CustomBaseModel):
     id: int

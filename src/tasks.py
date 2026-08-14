@@ -4,18 +4,21 @@ import json
 import asyncio
 import logging
 from datetime import date
+from typing import Union
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.result import AsyncResult
 from sqlalchemy import select
 from playwright.async_api import async_playwright
 import redis
 
-from database import AsyncSessionLocal
-from models import Route
-from crud import create_route_history, create_route
-from scraper import AsyncScraper
-from schemas import ScrapeInput, ScrapeContext, ScrapeResult
+from .database import AsyncSessionLocal
+from .models import Route
+from .crud import create_route_history, create_route
+from .scraper import AsyncScraper
+from .schemas import ScrapeInput, ScrapeContext, ScrapeSuccess, ScrapeFailure, ScrapeResult
+from .service import scrape_route
 
 logger = logging.getLogger(__name__)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -33,7 +36,7 @@ celery_app.conf.update(
 
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
-# 2. Automated Trigger Profile: Runs every single night at midnight
+# 2. Automated Trigger
 celery_app.conf.beat_schedule = {
     "nightly-bulk-scraping-routine": {
         "task": "tasks.scrape_all_active_routes_task",
@@ -43,16 +46,16 @@ celery_app.conf.beat_schedule = {
 
 def run_async(coro):
     """Helper framework wrapper to drive modern async loops inside synchronous threads."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 @celery_app.task(name="tasks.scrape_batch_routes_task")
-def scrape_batch_routes_task(scrape_inputs_list: list[dict]) -> dict:
-    """Accepts a list of routes, processing them concurrently inside one browser context."""
-    return run_async(async_batch_scrape_pipeline(scrape_inputs_list))
+def scrape_batch_routes_task(scrape_inputs_list: list[dict]) -> list[ScrapeResult]:
+    """Async wrapper for scraping task"""
+    return run_async(batch_scrape_and_cache(scrape_inputs_list))
 
 
-async def worker_scrape_and_cache(scrape_input_dict: dict, context, db) -> dict:
+async def worker_scrape_and_cache(scrape_input_dict: dict, context, db) -> ScrapeResult:
     """Scrapes a single page within the shared browser context."""
     scrape_input = ScrapeInput(**scrape_input_dict)
     
@@ -62,24 +65,32 @@ async def worker_scrape_and_cache(scrape_input_dict: dict, context, db) -> dict:
         scrape_result_dict = scrape_result.model_dump()
         
         cache_key = f"cache:route:{scrape_result.origin}:{scrape_result.destination}"
-        redis_client.setex(
+        redis_client.set(
             name=cache_key,
-            time=86400,
+            ex=86400,
             value=json.dumps(scrape_result_dict, default=str)
         )
-        return {"status": "success", "route": scrape_input_dict, "result": scrape_result_dict}
+        return ScrapeSuccess.model_validate(**scrape_result_dict)
         
     except Exception as e:
-        logger.error(f"Failed scraping {scrape_input.origin} -> {scrape_input.destination}: {str(e)}")
-        return {"status": "failed", "route": scrape_input_dict, "error": str(e)}
+        msg = f"Failed scraping {scrape_input.origin} -> {scrape_input.destination}: {str(e)}"
+        logger.error(msg)
+        return ScrapeFailure.model_validate({"error": msg})
     finally:
         await page.close()
 
 
-async def batch_scrape_and_cache(scrape_inputs_list: list[dict]) -> dict:
+async def batch_scrape_and_cache(scrape_inputs_list: list[dict]) -> list[ScrapeResult]:
     """Scrapes few routes with single browser"""
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--headless=new",       # Forces Chromium's standard headless architecture
+                "--no-sandbox",          # Essential for root permissions inside Linux Docker containers
+                "--disable-gpu",         # Bypasses hardware rendering calls inside a Docker engine
+                "--disable-dev-shm-usage" # Prevents browser memory crashes inside restricted containers
+            ])
         context = await browser.new_context()
         
         async with AsyncSessionLocal() as db:
@@ -89,18 +100,33 @@ async def batch_scrape_and_cache(scrape_inputs_list: list[dict]) -> dict:
                     for scrape_input_dict in scrape_inputs_list
                 ]
                 
-                # Run all pages concurrently via asyncio.gather
                 results = await asyncio.gather(*tasks)
                 
                 # Explicitly commit database because we don't have fastAPI db dependency injection here
                 await db.commit()
                 
-                return {"status": "batch_completed", "results": results}
+                return results
                 
             except Exception as e:
                 await db.rollback()
                 logger.error(f"Batch pipeline transaction failure: {str(e)}")
-                return {"status": "batch_failed", "error": str(e)}
+                raise e
             finally:
                 await context.close()
                 await browser.close()
+
+async def get_task_result(task_id: str) -> ScrapeResult:
+    task_result = AsyncResult(task_id, app=celery_app)
+    
+    response = {
+        "task_id": task_id,
+        "status": task_result.status,
+        "result": task_result.result
+    }
+    
+    if task_result.status == "SUCCESS":
+        return ScrapeSuccess.model_validate(**response)
+    else:
+        return ScrapeFailure.model_validate(**response)
+        
+    

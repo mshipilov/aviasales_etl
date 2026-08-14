@@ -14,7 +14,7 @@ DB_USER=os.getenv('POSTGRES_USER')
 DB_PASS=os.getenv('POSTGRES_PASSWORD')
 DB_HOST=os.getenv('POSTGRES_HOST')
 DB_PORT=os.getenv('DB_PORT')
-DB_NAME=os.getenv('DB_NAME')
+DB_NAME=os.getenv('POSTGRES_DB')
 db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 # override db url to my credentials from ENV
 config = context.config

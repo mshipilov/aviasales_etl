@@ -4,7 +4,7 @@ import re
 from playwright.async_api import async_playwright
 
 from .utils import parse_russian_date
-from ..schemas import ScrapeInput, ScrapeContext, ScrapeResult
+from ..schemas import ScrapeInput, ScrapeContext, ScrapeSuccess
 
 # this is my worker
 class AsyncScraper:
@@ -43,7 +43,7 @@ class AsyncScraper:
 
         return scrape_context
 
-    async def scrape_abbr(self, scrape_context: ScrapeContext) -> ScrapeResult:
+    async def scrape_abbr(self, scrape_context: ScrapeContext) -> ScrapeSuccess:
         url = f'https://www.aviasales.ru/?params={scrape_context.abbr}'
         print(url)
 
@@ -61,47 +61,19 @@ class AsyncScraper:
         date_text = await date_element.inner_text()
         departure_date = parse_russian_date(date_text)
 
-        scrape_result = ScrapeResult(price=price, departure_date=departure_date, **scrape_context.model_dump())
+        scrape_result = ScrapeSuccess(price=price, departure_date=departure_date, **scrape_context.model_dump())
         
         return scrape_result
     
-    async def scrape_by_input(self, scrape_input: ScrapeInput) -> ScrapeResult:
+    async def scrape_by_input(self, scrape_input: ScrapeInput) -> ScrapeSuccess:
         await self.add_headers()
         scrape_context = await self.get_route_abbr(scrape_input)
         scrape_result = await self.scrape_abbr(scrape_context)
 
         return scrape_result
         
-    async def scrape_by_context(self, scrape_context: ScrapeContext) -> ScrapeResult:
+    async def scrape_by_context(self, scrape_context: ScrapeContext) -> ScrapeSuccess:
         await self.add_headers()
         scrape_result = await self.scrape_abbr(scrape_context)
 
         return scrape_result
-
-async def main():
-    # Sample batch of abbreviations to scrape concurrently
-    abbr_batch = ["OVBSHA1", "OVBBJS1", "OVBCAN1"]
-    #abbr_batch = ["OVBSHA1"]
-    
-    async with async_playwright() as p:
-        # Launch browser once
-        browser = await p.chromium.launch(headless=False)
-        # Create a single context shared by workers (avoids opening multiple browser windows)
-        context = await browser.new_context()
-        
-        # Create concurrent tasks for the entire batch
-        #tasks = [scrape_worker(context, abbr) for abbr in abbr_batch]
-        tasks = [scrape_worker2(context)]
-        
-        # await until all tasks completed
-        results = await asyncio.gather(*tasks)
-        
-        # Process results
-        for result in results:
-            print(result)
-            
-        await browser.close()
-
-# Run the async loop
-if __name__ == "__main__":
-    asyncio.run(main())
