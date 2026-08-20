@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_BROKER_URL", "redis://localhost:6379/0")
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 """async def get_request_page() -> Page:
@@ -100,6 +100,10 @@ async def get_task_status(task_id: str) -> ScrapeResult:
     response = await get_task_result(task_id=task_id)
         
     return response
+
+
+
+
 
 @app.get('/routes/')
 async def get_routes(

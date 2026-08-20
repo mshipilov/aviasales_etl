@@ -45,9 +45,11 @@ async def create_route_history(scrape_result: ScrapeSuccess, db: AsyncSession, r
     db.add(route_history)
     return route_history
 
-async def read_active_routes(route_number: int, db: AsyncSession) -> Sequence[Route]:
+async def read_active_routes(db: AsyncSession, route_number: int = 0) -> Sequence[Route]:
     logger.info(f"Fetching newest {route_number} active routes")
-    stmt = select(Route).where(Route.is_active == True).order_by(desc(Route.created_at)).limit(route_number)
+    stmt = select(Route).where(Route.is_active == True).order_by(desc(Route.created_at))
+    if route_number:
+        stmt = stmt.limit(route_number)
     result = await db.execute(stmt)
     active_routes = result.scalars().all()
     return active_routes

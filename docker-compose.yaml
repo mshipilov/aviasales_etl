@@ -52,7 +52,7 @@ services:
   # 5. Background asynchronous worker service (Runs Playwright)
   celery_worker:
     build: .
-    command: celery -A src.tasks.celery_app worker --loglevel=debug --pool=threads
+    command: celery -A src.tasks.celery_app worker --loglevel=debug --pool=solo
     env_file:
       - .env
     depends_on:
@@ -65,11 +65,14 @@ services:
   # 6. Scheduled task timer tracker daemon (Triggers the Midnight Routine)
   celery_beat:
     build: .
-    command: celery -A tasks.celery_app beat --loglevel=debug
+    command: celery -A src.tasks.celery_app beat --loglevel=debug
     env_file:
       - .env
     depends_on:
-      - redis
+      pgdatabase:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   aviasales_postgres_data:

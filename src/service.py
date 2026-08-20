@@ -34,7 +34,7 @@ async def scrape_route(scrape_input: ScrapeInput, db: AsyncSession, page: Page) 
     # return data
     return scrape_result
 
-async def get_active_routes(route_number: int, db: AsyncSession) -> list[RouteResult]:
+async def get_active_routes(db: AsyncSession, route_number: int = 0) -> list[RouteResult]:
     routes = await read_active_routes(route_number=route_number, db=db)
     route_results = [RouteResult.model_validate(route) for route in routes]
     return route_results
