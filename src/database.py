@@ -4,14 +4,22 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from .models import Base
 
+inside_docker = os.path.exists('/.dockerenv')
+
 DB_USER=os.getenv('POSTGRES_USER')
 DB_PASS=os.getenv('POSTGRES_PASSWORD')
-DB_HOST=os.getenv('POSTGRES_HOST')
+DB_HOST=os.getenv('POSTGRES_HOST') if inside_docker else os.getenv('POSTGRES_HOST_LOCAL')
 DB_PORT=os.getenv('DB_PORT')
-DB_NAME=os.getenv('DB_NAME')
+DB_NAME=os.getenv('POSTGRES_DB')
 
 DATABASE_URL = f'postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-engine = create_async_engine(DATABASE_URL, echo=True)
+
+from sqlalchemy.pool import NullPool
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=True, 
+    poolclass=NullPool  # this is necessrary to avoid problems with async coroutines receiving same connection to db and crash
+    )
 
 # create tables if not exist
 async def create_db_tables():

@@ -6,7 +6,7 @@ from sqlalchemy import select, update, desc
 from sqlalchemy.exc import IntegrityError
 
 from .models import Base, Route, RouteHistory
-from .schemas import ScrapeInput, ScrapeResult
+from .schemas import ScrapeInput, ScrapeSuccess
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ async def read_route_by_origin_destination(db: AsyncSession, scrape_input: Scrap
 
     return result.scalar_one_or_none()
 
-async def create_route(scrape_result: ScrapeResult, db: AsyncSession) -> Route:
+async def create_route(scrape_result: ScrapeSuccess, db: AsyncSession) -> Route:
     logger.info(f"Saving new route in DB: {scrape_result.origin} -> {scrape_result.destination} ({scrape_result.abbr})")
     route = Route(origin=scrape_result.origin,
         destination=scrape_result.destination,
@@ -33,11 +33,11 @@ async def create_route(scrape_result: ScrapeResult, db: AsyncSession) -> Route:
         await db.flush()
         await db.refresh(route)
     except IntegrityError:
-        logger.warning(f"Route already exists for {ScrapeResult}")
+        logger.warning(f"Route already exists for {ScrapeSuccess}")
 
     return route
     
-async def create_route_history(scrape_result: ScrapeResult, db: AsyncSession, route_id: int) -> RouteHistory:
+async def create_route_history(scrape_result: ScrapeSuccess, db: AsyncSession, route_id: int) -> RouteHistory:
     logger.info(f"Saving new route history in DB: {scrape_result.origin} -> {scrape_result.destination}, price = {scrape_result.price}")
     db_columns = RouteHistory.__table__.columns.keys()
     filtered_data = {k: v for k, v in scrape_result.model_dump().items() if k in db_columns}
@@ -45,9 +45,11 @@ async def create_route_history(scrape_result: ScrapeResult, db: AsyncSession, ro
     db.add(route_history)
     return route_history
 
-async def read_active_routes(route_number: int, db: AsyncSession) -> Sequence[Route]:
+async def read_active_routes(db: AsyncSession, route_number: int = 0) -> Sequence[Route]:
     logger.info(f"Fetching newest {route_number} active routes")
-    stmt = select(Route).where(Route.is_active == True).order_by(desc(Route.created_at)).limit(route_number)
+    stmt = select(Route).where(Route.is_active == True).order_by(desc(Route.created_at))
+    if route_number:
+        stmt = stmt.limit(route_number)
     result = await db.execute(stmt)
     active_routes = result.scalars().all()
     return active_routes

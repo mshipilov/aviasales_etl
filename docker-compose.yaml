@@ -1,27 +1,81 @@
 services:
+  # 1. Relational database storage instance
   pgdatabase:
-    image: postgres:18
+    image: postgres:17-alpine
     env_file:
       - .env
     volumes:
-      - "aviasales_postgres_data:/var/lib/postgresql"
+      - aviasales_postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+  # 2. Database administrative dashboard UI
   pgadmin:
     image: dpage/pgadmin4
     environment:
       PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
       PGADMIN_DEFAULT_PASSWORD: "root"
-      PGADMIN_CONFIG_PROXY_X_HOST_COUNT: 1
-      PGADMIN_CONFIG_PROXY_X_PREFIX_COUNT: 1
     volumes:
-      - "pgadmin_data:/var/lib/pgadmin"
+      - pgadmin_data:/var/lib/pgadmin
     ports:
       - "8085:80"
 
+  # 3. Redis broker and caching layer instance
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
+  # 4. FastAPI application gateway
+  web_api:
+    build: .
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - app_logs:/app/logs
+    depends_on:
+      pgdatabase:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # 5. Background asynchronous worker service (Runs Playwright)
+  celery_worker:
+    build: .
+    command: celery -A src.tasks.celery_app worker --loglevel=debug --pool=solo
+    env_file:
+      - .env
+    depends_on:
+      pgdatabase:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+
+  # 6. Scheduled task timer tracker daemon (Triggers the Midnight Routine)
+  celery_beat:
+    build: .
+    command: celery -A src.tasks.celery_app beat --loglevel=debug
+    env_file:
+      - .env
+    depends_on:
+      pgdatabase:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   aviasales_postgres_data:
   pgadmin_data:
+  redis_data:
+  app_logs:

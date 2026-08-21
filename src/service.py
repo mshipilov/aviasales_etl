@@ -1,17 +1,18 @@
 import logging
 from collections import defaultdict
 
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from playwright.async_api import Page
 
-from .schemas import ScrapeInput, ScrapeContext, ScrapeResult, RouteResult, RouteHistoryResult
+from .schemas import ScrapeInput, ScrapeContext, ScrapeResult, ScrapeSuccess, RouteResult, ScrapeFailure, RouteHistoryResult
 from .crud import read_route_by_origin_destination, create_route, create_route_history, read_active_routes, read_bulk_route_history
 from .scraper import AsyncScraper
 
 
 logger = logging.getLogger(__name__)
 
-async def scrape_route(scrape_input: ScrapeInput, db: AsyncSession, page: Page) -> ScrapeResult:
+async def scrape_route(scrape_input: ScrapeInput, db: AsyncSession, page: Page) -> ScrapeSuccess:
     scraper = AsyncScraper(page=page)
     route = await read_route_by_origin_destination(scrape_input=scrape_input, db=db)
     
@@ -33,7 +34,7 @@ async def scrape_route(scrape_input: ScrapeInput, db: AsyncSession, page: Page) 
     # return data
     return scrape_result
 
-async def get_active_routes(route_number: int, db: AsyncSession) -> list[RouteResult]:
+async def get_active_routes(db: AsyncSession, route_number: int = 0) -> list[RouteResult]:
     routes = await read_active_routes(route_number=route_number, db=db)
     route_results = [RouteResult.model_validate(route) for route in routes]
     return route_results

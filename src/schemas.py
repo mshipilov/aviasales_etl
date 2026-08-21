@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Union
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class CustomBaseModel(BaseModel):    
@@ -16,14 +16,31 @@ class ScrapeInput(CustomBaseModel):
     origin: str = Field(description="city or country in Russian language (start point)")
     destination: str = Field(description="city or country in Russian language (finish point)")
 
+    # format city name: first capital, other lowercase
+    @field_validator("origin", "destination", mode="before")
+    @classmethod
+    def capitalize_strings(cls, s: str) -> str:
+        return s.capitalize()
+
 class ScrapeContext(ScrapeInput):
     """here user's typos in origin and destination are fixed by scraper"""
     abbr: str = Field(description="the abbreviation of route as it used in url For example https://www.aviasales.ru/?params=OVBUIO1 abbr is OVBUIO1")
 
 
-class ScrapeResult(ScrapeContext):
+class ScrapeSuccess(ScrapeContext):
     price: int 
     departure_date: date
+    status: str = "success"
+
+class ScrapeFailure(BaseModel):
+    status: str = "failed"
+    error: str
+
+ScrapeResult = Union[ScrapeSuccess, ScrapeFailure]
+
+class ScrapePreResult(CustomBaseModel):
+    status: str
+    task_id: str
 
 class RouteResult(CustomBaseModel):
     id: int
